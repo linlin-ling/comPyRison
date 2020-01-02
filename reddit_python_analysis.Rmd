@@ -1,0 +1,112 @@
+---
+title: "reddit_python_analysis"
+author: "Yulin Chang"
+date: "2019年12月16日"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+library(readr)
+library(dplyr)
+library(stringr)
+library(ggplot2)
+library(tm)
+reddit_python <- read_csv("./data/reddit_python_features.csv")
+# view data
+reddit_python[c(1,10,100,1000,10000), ]
+```
+
+
+```{r}
+# DO NOT RUN THIS CHUNK
+keeps <- c("author", "created_utc", "id", "url", "score", "selftext", "title", "length", "q_marks", "please", "thanks")
+# keeps only useful data 
+reddit_python <- reddit_python[keeps] %>% 
+  group_by(id) %>% 
+  # compute length and number of question marks per post
+mutate(length = length(unlist(strsplit(selftext, " "))), q_marks = length(unlist(str_match_all(selftext, "\\?"))))
+# compute specific words per post
+reddit_python <- reddit_python %>% 
+  group_by(id) %>% 
+  mutate(please = length(unlist(str_match_all(selftext, "please"))), thanks = length(unlist(str_match_all(selftext, "(thanks|thx|thank you)"))))
+# compute total post published by every author
+reddit_python_10kings <- reddit_python %>% 
+  group_by(author) %>% 
+  summarise(total_post = n()) %>% 
+  filter(author != "[deleted]") %>% 
+  arrange(desc(total_post)) %>% 
+  top_n(10)
+# get top 10 authors with most posts
+reddit_kings <- ggplot(reddit_python_10kings, aes(x = author, y = total_post))+
+  geom_bar(stat = "identity")+
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))+
+  geom_text(aes(label=total_post), vjust=-0.25)
+reddit_kings
+
+```
+
+```{r}
+
+```
+
+```{r}
+library(tidytext)
+data("stop_words")
+
+# remove unwanted characters in title
+reddit_python$title <- str_replace(reddit_python$title, "[\\?-]", "")
+# build tidytext format for title
+tidy_text_title <- reddit_python %>%
+  unnest_tokens(output = "word", input = "title",
+                token = "regex", pattern = " ") %>% 
+  # removing stop words in content
+  anti_join(stop_words, by = c("word" = "word"))
+# the frequency list of title
+freq_word_title <- tidy_text_title %>%
+  count(word) %>%
+  arrange(desc(n))
+# frequency plot
+ggplot(freq_word_title[1:10,], aes(x = reorder(word, -n), y = n))+
+  geom_bar(stat = "identity")+
+  geom_text(aes(label=n), vjust=-0.25)+
+  xlab("Top 10 Words used in titles of REDDIT/Python")
+
+
+# build tidytext format for content
+tidy_text_content <- reddit_python %>% 
+  filter(!(is.na(selftext))) %>%
+  unnest_tokens(output = "word", input = "selftext",
+                token = "regex", pattern = " ") %>% 
+  # removing stop words in content
+  anti_join(stop_words, by = c("word" = "word"))
+# the frequency list of content
+freq_word_content <- tidy_text_content %>%
+  count(word) %>%
+  arrange(desc(n))
+freq_word_content <- freq_word_content[!(freq_word_content$word %in% c("\r\r\r\n", "[removed]", "[deleted]")), ]
+# frequency plot
+ggplot(freq_word_content[1:20,], aes(x = reorder(word, -n), y = n))+
+  geom_bar(stat = "identity")+
+  geom_text(aes(label=n), vjust=-0.25)+
+  xlab("Top 20 Words used in post contents of REDDIT/Python")
+```
+
+```{r}
+# match errors in content
+error <- unlist(str_match_all(tidy_text_content$word,"[^-_\\[\\^\\\\&g;!\'\"\\n\\*`\\(\\t#].+error:"))
+# build a dataframe for errors
+df_error <- data.frame(error)
+# count the frequency for every error
+df_error <- df_error %>% group_by(error) %>% summarise(count=n()) %>% arrange(desc(count)) 
+# plot error frequency
+ggplot(df_error[1:10,], aes(x = reorder(error, -count), y = count))+
+  geom_bar(stat = "identity")+
+  geom_text(aes(label=count), vjust=-0.25)+
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))+
+  xlab("Top 10 errors in post contents of REDDIT/Python")
+```
+
