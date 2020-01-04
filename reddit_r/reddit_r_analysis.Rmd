@@ -48,7 +48,7 @@ textsplit=strsplit(reddit_r$selftext," ")
 
 ```
 
-## 问号数量
+## 问号 & please/thank
 
 
 ```{r}
@@ -62,6 +62,9 @@ for(i in seq(num_post)){
   num_ques[i]=str_count(reddit_r$selftext[i],"(\\?|？)")
   num_plath[i]=str_count(reddit_r$selftext[i],"(please|Please|PLEASE|plz|Plz|PLZ|Thank|thank|THANK|thx|Thx|THX)")
 }
+cor.test(reddit_r$num_comments,num_char)
+cor.test(reddit_r$num_comments,num_ques)
+cor.test(reddit_r$num_comments,num_plath)
 ```
 
 ## 词频&云图
