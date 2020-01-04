@@ -1,0 +1,10 @@
+jiebaR
+dplyr
+ggplot2
+stringr
+httr
+rvest
+quanteda
+tidytext
+jsonlite
+
