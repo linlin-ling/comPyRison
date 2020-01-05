@@ -15,7 +15,7 @@ library(dplyr)
 library(stringr)
 library(ggplot2)
 library(tm)
-reddit_python <- read_csv("./data/reddit_python_features.csv")
+reddit_python <- read_csv("./data/reddit_python_processed.csv")
 # view data
 reddit_python[c(1,10,100,1000,10000), ]
 ```
@@ -23,16 +23,13 @@ reddit_python[c(1,10,100,1000,10000), ]
 
 ```{r}
 # DO NOT RUN THIS CHUNK
-keeps <- c("author", "created_utc", "id", "url", "score", "selftext", "title", "length", "q_marks", "please", "thanks")
+keeps <- c("author", "created_utc", "id", "url", "num_comments", "selftext", "title")
 # keeps only useful data 
 reddit_python <- reddit_python[keeps] %>% 
   group_by(id) %>% 
   # compute length and number of question marks per post
-mutate(length = length(unlist(strsplit(selftext, " "))), q_marks = length(unlist(str_match_all(selftext, "\\?"))))
-# compute specific words per post
-reddit_python <- reddit_python %>% 
-  group_by(id) %>% 
-  mutate(please = length(unlist(str_match_all(selftext, "please"))), thanks = length(unlist(str_match_all(selftext, "(thanks|thx|thank you)"))))
+mutate(length = length(unlist(strsplit(selftext, " "))), q_marks = length(unlist(str_match_all(selftext, "\\?"))), politeness = length(unlist(str_match_all(selftext, "[Pp]lease|[Tt]hx|[Tt]hanks?|PLEASE|[Pp]lz|PLZ|THX|THANKS|THANK"))))
+
 # compute total post published by every author
 reddit_python_10kings <- reddit_python %>% 
   group_by(author) %>% 
@@ -71,7 +68,8 @@ freq_word_title <- tidy_text_title %>%
   arrange(desc(n))
 # frequency plot
 ggplot(freq_word_title[1:10,], aes(x = reorder(word, -n), y = n))+
-  geom_bar(stat = "identity")+
+  geom_bar(stat = "identity", fill = "#FEB2A2")+
+  coord_cartesian(ylim = c(0, 45000))+
   geom_text(aes(label=n), vjust=-0.25)+
   xlab("Top 10 Words used in titles of REDDIT/Python")
 
@@ -97,14 +95,14 @@ ggplot(freq_word_content[1:20,], aes(x = reorder(word, -n), y = n))+
 
 ```{r}
 # match errors in content
-error <- unlist(str_match_all(tidy_text_content$word,"[^-_\\[\\^\\\\&g;!\'\"\\n\\*`\\(\\t#].+error:"))
+error <- str_match(tidy_text_content$word,"([^-_\\[\\^\\\\&g;!\'\"\\n\\*`\\(\\t#].+error):")
 # build a dataframe for errors
-df_error <- data.frame(error)
+df_error <- data.frame(error_type = error[,2][!is.na(error)])
 # count the frequency for every error
-df_error <- df_error %>% group_by(error) %>% summarise(count=n()) %>% arrange(desc(count)) 
+df_error <- df_error %>% group_by(error_type) %>% summarise(count=n()) %>% arrange(desc(count)) 
 # plot error frequency
-ggplot(df_error[1:10,], aes(x = reorder(error, -count), y = count))+
-  geom_bar(stat = "identity")+
+ggplot(df_error[2:11,], aes(x = reorder(error_type, -count), y = count))+
+  geom_bar(stat = "identity", fill = "#FEB2A2")+
   geom_text(aes(label=count), vjust=-0.25)+
   theme(axis.text.x = element_text(angle = 45, hjust = 1))+
   xlab("Top 10 errors in post contents of REDDIT/Python")
