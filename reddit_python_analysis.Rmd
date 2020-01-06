@@ -70,9 +70,13 @@ freq_word_title <- tidy_text_title %>%
 ggplot(freq_word_title[1:10,], aes(x = reorder(word, -n), y = n))+
   geom_bar(stat = "identity", fill = "#FEB2A2")+
   coord_cartesian(ylim = c(0, 45000))+
-  geom_text(aes(label=n), vjust=-0.25)+
-  xlab("Top 10 Words used in titles of REDDIT/Python")
-
+  geom_text(aes(label=n), vjust = 0.25)+
+  coord_flip()+
+  ylab("Top 10 Words used in titles of REDDIT/Python")+
+  xlab("Word")
+# wordcloud for title
+library(wordcloud2)
+wordcloud2(freq_word_title, fontFamily = "Gen Jyuu Gothic Medium")
 
 # build tidytext format for content
 tidy_text_content <- reddit_python %>% 
@@ -102,9 +106,10 @@ df_error <- data.frame(error_type = error[,2][!is.na(error)])
 df_error <- df_error %>% group_by(error_type) %>% summarise(count=n()) %>% arrange(desc(count)) 
 # plot error frequency
 ggplot(df_error[2:11,], aes(x = reorder(error_type, -count), y = count))+
-  geom_bar(stat = "identity", fill = "#FEB2A2")+
-  geom_text(aes(label=count), vjust=-0.25)+
-  theme(axis.text.x = element_text(angle = 45, hjust = 1))+
-  xlab("Top 10 errors in post contents of REDDIT/Python")
+  geom_bar(stat = "identity", fill = "#FFBE75")+
+  geom_text(aes(label=count))+
+  coord_flip()+
+  ylab("n")+
+  xlab("errors")
 ```
 
