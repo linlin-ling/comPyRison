@@ -1,0 +1,122 @@
+---
+title: "reddit_r"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## 载入library
+
+
+```{r}
+library(rreddit)
+library(stringr)
+library(dplyr)
+library(tidytext)
+library(ggplot2)
+library(wordcloud2)
+```
+
+## 写入数据
+
+
+```{r}
+# get data
+# reddit_r=get_r_reddit("Rlanguage",n=6000)
+# write.csv(reddit_r,file="reddit_r.csv")
+```
+
+
+## 读取数据
+
+
+```{r}
+# read data
+reddit_r=read.csv("reddit_r.csv",stringsAsFactors=0)
+```
+
+
+## 断词
+
+
+```{r}
+
+titlesplit=strsplit(reddit_r$title," ")
+textsplit=strsplit(reddit_r$selftext," ")
+
+```
+
+## 问号 & please/thank
+
+
+```{r}
+
+num_post=length(textsplit)
+num_char=vector(mode="numeric",length=num_post)
+num_ques=vector(mode="numeric",length=num_post)
+num_plath=vector(mode="numeric",length=num_post)
+for(i in seq(num_post)){
+  num_char[i]=length(unlist(textsplit[i]))
+  num_ques[i]=str_count(reddit_r$selftext[i],"(\\?|？)")
+  num_plath[i]=str_count(reddit_r$selftext[i],"(please|Please|PLEASE|plz|Plz|PLZ|Thank|thank|THANK|thx|Thx|THX)")
+}
+cor.test(reddit_r$num_comments,num_char)
+cor.test(reddit_r$num_comments,num_ques)
+cor.test(reddit_r$num_comments,num_plath)
+```
+
+## 词频&云图
+
+
+```{r}
+
+data("stop_words")
+tidy_text_content=reddit_r%>%
+  filter(!(is.na(selftext)))%>%
+  unnest_tokens(output = "word",input = "selftext",token = "regex",pattern=" ")%>%
+  anti_join(stop_words,by=c("word"="word"))
+
+freq_word_content=tidy_text_content%>%
+  count(word)%>%
+  arrange(desc(n))
+freq_word_content_rm=str_remove(freq_word_content$word,"[a-zA-Z]{1,}")
+freq_word_content_real=subset(freq_word_content,freq_word_content_rm=="")
+wordcloud2(freq_word_content_real)
+```
+
+## package
+
+
+```{r}
+
+dict_pkg=read.table("r_pkg_dict.txt",stringsAsFactors = 0)
+names(dict_pkg)="word"
+dict_pkg=dict_pkg %>%
+   mutate(num = 0) 
+
+for(i in seq(length(freq_word_content$word))){
+  dict_pkg$num[which(dict_pkg$word==freq_word_content$word[i])]=freq_word_content$n[i]
+}
+freq_pkg=dict_pkg%>%
+  arrange(desc(num))
+freq_pkg$word=factor(freq_pkg$word,levels=freq_pkg$word,ordered=1)
+ggplot(freq_pkg, aes(x = word, y = num))+
+  geom_bar(stat = "identity")+
+  geom_text(aes(label=num), vjust=-0.25)+
+  
+  xlab("Top packages used in post contents of r/rlanguage")
+
+```
+## r之王
+
+
+```{r}
+
+reddit_r%>%
+  group_by(author)%>%
+  summarise(n=n())%>%
+  arrange(desc(n))
+
+```
